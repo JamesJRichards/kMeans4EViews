@@ -338,6 +338,8 @@ for %concept {%concepts}
 next
 
 ' iterate thru each cluster centroid
+pageselect {%page_work}
+series clusternum
 for !i = 1 to !K
 	pageselect {%page_work}
 	%centr_opt = "v_centr" + @str(!i) + "_opt"
@@ -357,6 +359,9 @@ for !i = 1 to !K
 			' must find out which index this associated observation actually is (can be offset by NAs)
 			!assoc_ob = @val(@word(%obs_idxs, @val(%assoc_ob)))	
 			%assoc_obs_dates = %assoc_obs_dates + " " + @otod(!assoc_ob) + ","
+			pageselect {%page_work}
+			clusternum(!assoc_ob) = !I
+			pageselect {%page_called}
 			' add centroid's associated observation to the accumulator
 			!{%concept}_k_sum = !{%concept}_k_sum + {%concept}(!assoc_ob)
 		next
@@ -392,15 +397,41 @@ for !i = 1 to !K
 		{%results}.append %abs_diff_msg 	
 		{%results}.append %pct_diff_msg
 		{%results}.append
+		
+		pageselect {%page_work}
+		series {%concept}_{!i} = @recode(clusternum={!i}, {%concept}, NA)
+		pageselect {%page_called}
 	next 
 	{%results}.append "******************************************************************************************"
 	{%results}.append 
+	
+	
 next 
 
 ' present the final results to the user
+
+
+'graph
+pageselect {%page_work}
+%stackname = %page_work + "_STK"
+!count = 0
+while @pageexist(%stackname)
+	%stackname = %page_work + "_STK" + "_" + @str(!count,"g02")
+wend
+pagestack(?=stk, page={%stackname}) {%concept}_? @ *_?
+group g_stk *_stk
+freeze(gr_kmeans) g_stk.scat(mult=l,panel=combine)
+
+
+
 pageselect {%PAGE_CALLED}
+copy {%page_work}\clusternum {%page_called}\
+%graphname = @getnextname("gr_kmeans")
+copy {%stackname}\gr_kmeans {%page_called}\{%graphname}
+pagedelete {%stackname}
+
+pageselect {%page_called}
 show {%results}
-
-
+show {%graphname}
 
 
